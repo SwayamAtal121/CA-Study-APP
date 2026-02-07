@@ -1,0 +1,526 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>CA Couple Study OS</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+*{box-sizing:border-box;}
+
+body{
+font-family:'Inter',sans-serif;
+margin:0;
+background:linear-gradient(135deg,#020617,#0f172a);
+color:white;
+}
+
+.app{
+max-width:1350px;
+margin:auto;
+padding:30px 18px;
+}
+
+h1{text-align:center;margin-bottom:18px;}
+
+/******** USER SWITCH ********/
+
+.userSwitch{
+display:flex;
+justify-content:center;
+gap:14px;
+margin-bottom:24px;
+}
+
+.userBtn{
+padding:10px 26px;
+border-radius:999px;
+cursor:pointer;
+background:rgba(255,255,255,0.06);
+}
+
+.userBtn.active{
+background:#22c55e;
+box-shadow:0 0 16px rgba(34,197,94,.6);
+}
+
+/******** TABS ********/
+
+.tabs{
+display:flex;
+justify-content:center;
+gap:12px;
+margin-bottom:26px;
+flex-wrap:wrap;
+}
+
+.tab{
+padding:10px 22px;
+border-radius:999px;
+cursor:pointer;
+background:rgba(255,255,255,0.06);
+}
+
+.tab.active{
+background:#6366f1;
+box-shadow:0 0 18px rgba(99,102,241,.6);
+}
+
+/******** LAYOUT ********/
+
+.container{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:24px;
+}
+
+.card{
+background:rgba(255,255,255,0.05);
+padding:24px;
+border-radius:20px;
+backdrop-filter:blur(14px);
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:12px;
+border-radius:12px;
+margin-bottom:10px;
+background:rgba(255,255,255,0.04);
+}
+
+.inputGroup{display:flex;gap:8px;}
+
+input,select{
+padding:8px;
+border-radius:10px;
+border:none;
+background:rgba(255,255,255,0.12);
+color:white;
+}
+
+button{
+border:none;
+padding:9px 16px;
+border-radius:10px;
+background:#6366f1;
+color:white;
+cursor:pointer;
+}
+
+.subjectCard{
+margin-top:24px;
+padding:18px;
+border-radius:18px;
+background:rgba(255,255,255,0.04);
+overflow-x:auto;
+}
+
+.subjectTitle{
+font-weight:600;
+margin-bottom:12px;
+font-size:18px;
+color:#a5b4fc;
+}
+
+table{
+width:100%;
+min-width:650px;
+border-collapse:separate;
+border-spacing:0 8px;
+}
+
+tr{background:rgba(255,255,255,0.05);}
+
+th,td{
+padding:12px;
+text-align:center;
+}
+
+td:first-child{text-align:left;font-weight:500;}
+th{color:#c7d2fe;}
+
+input[type="checkbox"]{
+width:18px;
+height:18px;
+accent-color:#6366f1;
+cursor:pointer;
+}
+
+.hidden{display:none;}
+
+@media(max-width:900px){
+.container{grid-template-columns:1fr;}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<h1>📘 CA Couple Study OS</h1>
+
+<div class="userSwitch">
+<div class="userBtn active" onclick="switchUser('Swayam')">Swayam</div>
+<div class="userBtn" onclick="switchUser('Nishika')">Nishika</div>
+</div>
+
+<div class="tabs">
+<div class="tab active" onclick="switchTab('hours')">Study Hours</div>
+<div class="tab" onclick="switchTab('completion')">Completion</div>
+<div class="tab" onclick="switchTab('revision')">Revision</div>
+</div>
+
+<!-- HOURS -->
+
+<div id="hoursTab">
+
+<div class="container">
+
+<div class="card">
+<h3>Enter Study Hours</h3>
+<div id="inputs"></div>
+</div>
+
+<div class="card">
+<h3>Study Distribution</h3>
+<canvas id="pieChart"></canvas>
+</div>
+
+</div>
+
+</div>
+
+<!-- COMPLETION -->
+
+<div id="completionTab" class="hidden">
+<div class="card">
+
+<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+<select id="completionSubject">
+<option>AFM</option><option>FR</option><option>DT</option>
+<option>IDT</option><option>Audit</option>
+</select>
+
+<input id="completionChapter" placeholder="Chapter name">
+<button onclick="addCompletion()">Add</button>
+</div>
+
+<div id="completionTables"></div>
+
+</div>
+</div>
+
+<!-- REVISION -->
+
+<div id="revisionTab" class="hidden">
+<div class="card">
+
+<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+<select id="revisionSubject">
+<option>AFM</option><option>FR</option><option>DT</option>
+<option>IDT</option><option>Audit</option>
+</select>
+
+<input id="revisionChapter" placeholder="Chapter name">
+<button onclick="addRevision()">Add</button>
+</div>
+
+<div id="revisionTables"></div>
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+/******** DATA ********/
+
+let appData = JSON.parse(localStorage.getItem("caCoupleData")) || {
+Swayam:createEmpty(),
+Nishika:createEmpty()
+};
+
+let currentUser="Swayam";
+
+function createEmpty(){
+return {
+hours:{},
+completion:{AFM:[],FR:[],DT:[],IDT:[],Audit:[]},
+revision:{AFM:[],FR:[],DT:[],IDT:[],Audit:[]}
+};
+}
+
+function save(){
+localStorage.setItem("caCoupleData",JSON.stringify(appData));
+}
+
+/******** USER SWITCH ********/
+
+function switchUser(user){
+
+currentUser=user;
+
+document.querySelectorAll(".userBtn").forEach(b=>b.classList.remove("active"));
+event.target.classList.add("active");
+
+loadUser();
+
+}
+
+/******** TABS ********/
+
+function switchTab(tab){
+
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+
+hoursTab.classList.add('hidden');
+completionTab.classList.add('hidden');
+revisionTab.classList.add('hidden');
+
+if(tab==='hours'){hoursTab.classList.remove('hidden');document.querySelectorAll('.tab')[0].classList.add('active');}
+else if(tab==='completion'){completionTab.classList.remove('hidden');document.querySelectorAll('.tab')[1].classList.add('active');}
+else{revisionTab.classList.remove('hidden');document.querySelectorAll('.tab')[2].classList.add('active');}
+
+}
+
+/******** PIE ********/
+
+const subjects=["AFM","FR","DT","IDT","Audit"];
+const baseColors=["99,102,241","34,197,94","245,158,11","239,68,68","6,182,212"];
+
+const inputsDiv=document.getElementById("inputs");
+
+subjects.forEach(subject=>{
+
+const row=document.createElement("div");
+row.className="row";
+
+row.innerHTML=`
+<span>${subject}</span>
+<div class="inputGroup">
+<input type="number" placeholder="Total" id="${subject}-total">
+<input type="number" placeholder="Done" id="${subject}-completed">
+</div>`;
+
+inputsDiv.appendChild(row);
+
+});
+
+const chart=new Chart(document.getElementById('pieChart'),{
+type:'doughnut',
+data:{labels:[],datasets:[{data:[],backgroundColor:[],borderWidth:0}]},
+options:{plugins:{legend:{labels:{color:"white"}}},cutout:"65%"}
+});
+
+function loadUser(){
+
+const data=appData[currentUser];
+
+subjects.forEach(subject=>{
+
+document.getElementById(`${subject}-total`).value=data.hours[subject]?.total||"";
+document.getElementById(`${subject}-completed`).value=data.hours[subject]?.completed||"";
+
+});
+
+renderCompletion();
+renderRevision();
+updateChart();
+
+}
+
+document.querySelectorAll("input").forEach(i=>i.addEventListener("input",updateChart));
+
+function updateChart(){
+
+const labels=[];
+const data=[];
+const colors=[];
+
+subjects.forEach((subject,i)=>{
+
+const total=parseFloat(document.getElementById(`${subject}-total`).value)||0;
+const completed=Math.min(parseFloat(document.getElementById(`${subject}-completed`).value)||0,total);
+
+appData[currentUser].hours[subject]={total,completed};
+
+if(total>0){
+
+const remaining=total-completed;
+
+if(completed>0){
+labels.push(subject+" ✔");
+data.push(completed);
+colors.push(`rgba(${baseColors[i]},1)`);
+}
+
+if(remaining>0){
+labels.push(subject);
+data.push(remaining);
+colors.push(`rgba(${baseColors[i]},.2)`);
+}
+
+}
+
+});
+
+save();
+
+chart.data.labels=labels;
+chart.data.datasets[0].data=data;
+chart.data.datasets[0].backgroundColor=colors;
+chart.update();
+
+}
+
+/******** COMPLETION ********/
+
+function addCompletion(){
+
+const subject=completionSubject.value;
+const chapter=completionChapter.value.trim();
+if(!chapter) return;
+
+appData[currentUser].completion[subject].push({name:chapter,checks:[false,false,false]});
+completionChapter.value="";
+save();
+renderCompletion();
+
+}
+
+function renderCompletion(){
+
+completionTables.innerHTML="";
+const userData=appData[currentUser];
+
+subjects.forEach(subject=>{
+
+if(userData.completion[subject].length===0) return;
+
+let rows="";
+
+userData.completion[subject].forEach((ch,index)=>{
+
+rows+=`
+<tr>
+<td>${ch.name}</td>
+${ch.checks.map((val,i)=>`
+<td><input type="checkbox" ${val?"checked":""}
+onchange="toggleCompletion('${subject}',${index},${i})"></td>`).join("")}
+</tr>`;
+
+});
+
+const card=document.createElement("div");
+card.className="subjectCard";
+
+card.innerHTML=`
+<div class="subjectTitle">${subject}</div>
+<table>
+<tr>
+<th>Chapter</th>
+<th>Chapter</th>
+<th>Questions</th>
+<th>MCQs</th>
+</tr>
+${rows}
+</table>
+`;
+
+completionTables.appendChild(card);
+
+});
+
+}
+
+function toggleCompletion(subject,index,box){
+let ch=appData[currentUser].completion[subject][index];
+ch.checks[box]=!ch.checks[box];
+save();
+}
+
+/******** REVISION ********/
+
+function addRevision(){
+
+const subject=revisionSubject.value;
+const chapter=revisionChapter.value.trim();
+if(!chapter) return;
+
+appData[currentUser].revision[subject].push({name:chapter,checks:[false,false,false,false,false]});
+revisionChapter.value="";
+save();
+renderRevision();
+
+}
+
+function renderRevision(){
+
+revisionTables.innerHTML="";
+const userData=appData[currentUser];
+
+subjects.forEach(subject=>{
+
+if(userData.revision[subject].length===0) return;
+
+let rows="";
+
+userData.revision[subject].forEach((ch,index)=>{
+
+rows+=`
+<tr>
+<td>${ch.name}</td>
+${ch.checks.map((val,i)=>`
+<td><input type="checkbox" ${val?"checked":""}
+onchange="toggleRevision('${subject}',${index},${i})"></td>`).join("")}
+</tr>`;
+
+});
+
+const card=document.createElement("div");
+card.className="subjectCard";
+
+card.innerHTML=`
+<div class="subjectTitle">${subject}</div>
+<table>
+<tr>
+<th>Chapter</th>
+<th>R1</th>
+<th>R2</th>
+<th>R3</th>
+<th>R4</th>
+<th>R5</th>
+</tr>
+${rows}
+</table>
+`;
+
+revisionTables.appendChild(card);
+
+});
+
+}
+
+function toggleRevision(subject,index,box){
+let ch=appData[currentUser].revision[subject][index];
+ch.checks[box]=!ch.checks[box];
+save();
+}
+
+/******** INIT ********/
+
+loadUser();
+
+</script>
+
+</body>
+</html>
